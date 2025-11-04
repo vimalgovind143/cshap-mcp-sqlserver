@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "sqlserver": {
+      "command": "dotnet",
+      "args": [
+        "run",
+        "--project",
+        "D:\\GitHub\\cshap-mcp-sqlserver\\SqlServerMcpServer\\SqlServerMcpServer.csproj"
+      ],
+      "env": {
+        "SQLSERVER_CONNECTION_STRING": "Server=localhost;Database=YourDatabase;User Id=your_username;Password=your_password;TrustServerCertificate=true;"
+      }
+    }
+  }
+}
