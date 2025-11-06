@@ -17,7 +17,7 @@ Your `mcp_config.json` can contain multiple named server instances:
         "D:\\GitHub\\cshap-mcp-sqlserver\\SqlServerMcpServer\\SqlServerMcpServer.csproj"
       ],
       "env": {
-        "SQLSERVER_CONNECTION_STRING": "Server=localhost;Database=clean_utilities;User Id=sa;Password=YourStrong@Password123;TrustServerCertificate=true;",
+        "SQLSERVER_CONNECTION_STRING": "Server=localhost;Database=your_database;User Id=your_username;Password=your_password;TrustServerCertificate=true;",
         "MCP_ENVIRONMENT": "development",
         "MCP_SERVER_NAME": "Development SQL Server"
       }
