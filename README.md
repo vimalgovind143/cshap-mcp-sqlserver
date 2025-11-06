@@ -11,7 +11,8 @@ A Model Context Protocol (MCP) server that provides tools for interacting with M
 - **List Tables**: Get all tables in the current database with row counts
 - **Get Table Schema**: Retrieve column information for specific tables
 - **Connection Info**: Display current database connection status
-- **Stored Procedures**: List stored procedures with schema and dates
+- **Stored Procedures**: List stored procedures with schema and dates, get detailed info including parameters, definitions, and dependencies
+- **Object Definition**: Unified endpoint to get detailed information for any database object (procedures, functions, views) including definitions, parameters/columns, and dependencies
 - **Health Check**: Verify connectivity and view server properties
 - **Structured Logging**: JSON logs to stderr with correlation IDs and timings
  - **Serilog Integration**: Structured logging via Serilog with JSON formatting
@@ -170,9 +171,13 @@ The configuration file should be placed at:
 ## Available Tools
 
 ### 1. GetCurrentDatabase
-Get the current database connection info.
+Get the current database connection info with structured request logging.
 
 **Parameters:** None
+
+**Behavior:**
+- Emits Serilog start/end events with a correlation ID and elapsed time
+- Includes read-only security indicators in the payload
 
 **Example Usage:**
 ```
@@ -180,10 +185,14 @@ Show me the current database connection info
 ```
 
 ### 2. SwitchDatabase
-Switch to a different database on the same server.
+Switch to a different database on the same server with detailed audit logging.
 
 **Parameters:**
 - `databaseName` (string): The name of the database to switch to
+
+**Behavior:**
+- Validates connectivity before switching and logs success/failure details
+- Captures correlation ID, elapsed time, and error information when the switch fails
 
 **Example Usage:**
 ```
@@ -248,7 +257,73 @@ Get a list of stored procedures in the current database.
 List all stored procedures
 ```
 
-### 8. GetServerHealth
+### 8. GetStoredProcedureDetails
+Get detailed information about a specific stored procedure including parameters, definition, and dependencies.
+
+**Parameters:**
+- `procedureName` (string): Name of the stored procedure
+- `schemaName` (string, optional): Schema name (defaults to "dbo")
+
+**Returns:**
+- Procedure metadata (name, schema, create/modify dates)
+- Complete list of parameters with data types, directions (input/output), and default values
+- Full T-SQL definition of the procedure
+- Dependencies (tables, views, and other objects referenced by the procedure)
+
+**Example Usage:**
+```
+Get details for the stored procedure sp_GetUserOrders
+```
+
+```
+Show me the parameters and definition of dbo.sp_CalculateRevenue
+```
+
+**Response includes:**
+- `procedure_info` - Name, schema, dates, definition, and metadata
+- `parameters` - Full parameter list with types, precision, scale, output flags
+- `dependencies` - All database objects referenced by the procedure
+
+### 9. GetObjectDefinition
+Get detailed information about any database object (stored procedure, function, or view) in a unified endpoint.
+
+**Parameters:**
+- `objectName` (string): Name of the database object
+- `schemaName` (string, optional): Schema name (defaults to "dbo")
+- `objectType` (string, optional): Object type - 'PROCEDURE', 'FUNCTION', 'VIEW', or 'AUTO' to auto-detect (default is 'AUTO')
+
+**Returns:**
+- Object metadata (name, schema, type, create/modify dates, full definition)
+- **For Procedures & Functions**: Complete parameter list with data types, directions, and default values
+- **For Views**: Column information with data types and properties
+- Dependencies (all database objects referenced)
+
+**Example Usage:**
+```
+Get the definition of sp_GetCustomerOrders
+```
+
+```
+Show me details for the view vw_SalesReport
+```
+
+```
+Get information about the function fn_CalculateDiscount in the sales schema
+```
+
+**Key Features:**
+- **Auto-detection**: Automatically determines if the object is a procedure, function, or view
+- **Unified interface**: Single tool for all object types instead of separate tools
+- **Comprehensive**: Returns object-specific information (parameters for procedures/functions, columns for views)
+- **Full source code**: Includes complete T-SQL definition when available
+
+**Response includes:**
+- `object_info` - Name, schema, type, dates, and full T-SQL definition
+- `parameters` - (For procedures/functions) Parameter details with types and directions
+- `columns` - (For views) Column schema with data types and properties
+- `dependencies` - All database objects referenced by this object
+
+### 10. GetServerHealth
 Check connectivity and return server properties.
 
 **Parameters:** None
