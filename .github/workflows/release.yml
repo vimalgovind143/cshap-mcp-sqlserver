@@ -40,9 +40,46 @@ jobs:
         run: dotnet test --configuration Release --no-build --verbosity normal
         continue-on-error: true
 
-  # Job 2: Create release with binaries (only on tag push)
-  release:
-    name: Create Release
+  # Job 2: Build Windows binary (only on tag push)
+  build-windows:
+    name: Build Windows
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: windows-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+          include-prerelease: true
+
+      - name: Publish Windows x64
+        run: |
+          dotnet publish SqlServerMcpServer/SqlServerMcpServer.csproj `
+            -c Release `
+            -r win-x64 `
+            --self-contained true `
+            /p:PublishSingleFile=true `
+            /p:IncludeNativeLibrariesForSelfExtract=true `
+            -o ./publish/win-x64
+
+      - name: Package Windows Binary
+        run: |
+          Compress-Archive -Path ./publish/win-x64/* -DestinationPath SqlServerMcpServer-win-x64.zip
+
+      - name: Upload Windows Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-binary
+          path: SqlServerMcpServer-win-x64.zip
+
+  # Job 3: Build Linux binary (only on tag push)
+  build-linux:
+    name: Build Linux
     if: startsWith(github.ref, 'refs/tags/v')
     needs: build
     runs-on: ubuntu-latest
@@ -57,18 +94,6 @@ jobs:
           dotnet-version: '10.0.x'
           include-prerelease: true
 
-      # Build for Windows x64
-      - name: Publish Windows x64
-        run: |
-          dotnet publish SqlServerMcpServer/SqlServerMcpServer.csproj \
-            -c Release \
-            -r win-x64 \
-            --self-contained true \
-            /p:PublishSingleFile=true \
-            /p:IncludeNativeLibrariesForSelfExtract=true \
-            -o ./publish/win-x64
-
-      # Build for Linux x64
       - name: Publish Linux x64
         run: |
           dotnet publish SqlServerMcpServer/SqlServerMcpServer.csproj \
@@ -79,7 +104,35 @@ jobs:
             /p:IncludeNativeLibrariesForSelfExtract=true \
             -o ./publish/linux-x64
 
-      # Build for macOS x64
+      - name: Package Linux Binary
+        run: |
+          cd ./publish/linux-x64
+          tar -czf ../../SqlServerMcpServer-linux-x64.tar.gz *
+          cd ../..
+
+      - name: Upload Linux Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-binary
+          path: SqlServerMcpServer-linux-x64.tar.gz
+
+  # Job 4: Build macOS binaries (only on tag push)
+  build-macos:
+    name: Build macOS
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: macos-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+          include-prerelease: true
+
       - name: Publish macOS x64
         run: |
           dotnet publish SqlServerMcpServer/SqlServerMcpServer.csproj \
@@ -90,7 +143,6 @@ jobs:
             /p:IncludeNativeLibrariesForSelfExtract=true \
             -o ./publish/osx-x64
 
-      # Build for macOS ARM64 (Apple Silicon)
       - name: Publish macOS ARM64
         run: |
           dotnet publish SqlServerMcpServer/SqlServerMcpServer.csproj \
@@ -100,19 +152,6 @@ jobs:
             /p:PublishSingleFile=true \
             /p:IncludeNativeLibrariesForSelfExtract=true \
             -o ./publish/osx-arm64
-
-      # Package binaries
-      - name: Package Windows Binary
-        run: |
-          cd ./publish/win-x64
-          zip -r ../../SqlServerMcpServer-win-x64.zip *
-          cd ../..
-
-      - name: Package Linux Binary
-        run: |
-          cd ./publish/linux-x64
-          tar -czf ../../SqlServerMcpServer-linux-x64.tar.gz *
-          cd ../..
 
       - name: Package macOS x64 Binary
         run: |
@@ -126,12 +165,40 @@ jobs:
           tar -czf ../../SqlServerMcpServer-osx-arm64.tar.gz *
           cd ../..
 
-      # Extract version from tag
+      - name: Upload macOS Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-binaries
+          path: |
+            SqlServerMcpServer-osx-x64.tar.gz
+            SqlServerMcpServer-osx-arm64.tar.gz
+
+  # Job 5: Create GitHub Release
+  release:
+    name: Create Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [build-windows, build-linux, build-macos]
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+
+      - name: Move artifacts to root
+        run: |
+          mv ./artifacts/windows-binary/* .
+          mv ./artifacts/linux-binary/* .
+          mv ./artifacts/macos-binaries/* .
+
       - name: Get version from tag
         id: get_version
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
-      # Create GitHub Release
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
