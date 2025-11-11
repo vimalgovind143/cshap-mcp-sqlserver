@@ -181,5 +181,154 @@ namespace SqlServerMcpServer
         {
             return await SchemaInspection.GetObjectDefinitionAsync(objectName, schemaName, objectType);
         }
+
+        [McpServerTool, Description("Get SQL Server wait statistics")]
+        public static async Task<string> GetWaitStatsAsync(
+            [Description("Maximum number of wait types to return (default: 20)")] int topN = 20,
+            [Description("Include system wait types (default: false)")] bool includeSystemWaits = false,
+            [Description("Reset wait stats after reading (default: false)")] bool resetStats = false)
+        {
+            return await PerformanceAnalysis.GetWaitStats(topN, includeSystemWaits, resetStats);
+        }
+
+        [McpServerTool, Description("Find columns by data type across all tables")]
+        public static async Task<string> FindColumnsByDataTypeAsync(
+            [Description("SQL Server data type to search for (e.g., 'int', 'varchar', 'datetime')")] string dataType,
+            [Description("Schema name filter (optional)")] string? schemaName = null,
+            [Description("Table name filter (optional)")] string? tableName = null,
+            [Description("Include nullable columns (default: true)")] bool includeNullable = true,
+            [Description("Include non-nullable columns (default: true)")] bool includeNotNullable = true,
+            [Description("Include identity columns (default: true)")] bool includeIdentity = true,
+            [Description("Include computed columns (default: false)")] bool includeComputed = false)
+        {
+            return await DataDiscovery.FindColumnsByDataType(dataType, schemaName, tableName, includeNullable, includeNotNullable, includeIdentity, includeComputed);
+        }
+
+        // ==================== Diagnostics Operations ====================
+
+        [McpServerTool, Description("Get database size summary with optional per-table breakdown")]
+        public static async Task<string> GetDatabaseSizeAsync(
+            [Description("Include table-level size breakdown (default: true)")] bool includeTableBreakdown = true,
+            [Description("Maximum number of tables to include (default: 20)")] int topN = 20)
+        {
+            return await Diagnostics.GetDatabaseSize(includeTableBreakdown, topN);
+        }
+
+        [McpServerTool, Description("Get backup history from msdb for the current or specified database")]
+        public static async Task<string> GetBackupHistoryAsync(
+            [Description("Database name filter (optional - defaults to current database)")] string? databaseName = null,
+            [Description("Maximum number of records to return (default: 20)")] int topN = 20)
+        {
+            return await Diagnostics.GetBackupHistory(databaseName, topN);
+        }
+
+        [McpServerTool, Description("Get recent diagnostic events from the system_health Extended Events session")]
+        public static async Task<string> GetErrorLogAsync(
+            [Description("Maximum number of events to return (default: 100)")] int topN = 100)
+        {
+            return await Diagnostics.GetErrorLog(topN);
+        }
+
+        // ==================== Schema Analysis Operations ====================
+
+        [McpServerTool, Description("Discover foreign key relationships between tables")]
+        public static async Task<string> GetTableRelationshipsAsync(
+            [Description("Table name to filter relationships (optional)")] string? tableName = null,
+            [Description("Schema name (default: 'dbo')")] string? schemaName = "dbo",
+            [Description("Include tables that reference this table (default: true)")] bool includeReferencedBy = true,
+            [Description("Include tables this table references (default: true)")] bool includeReferences = true)
+        {
+            return await SchemaAnalysis.GetTableRelationships(tableName, schemaName, includeReferencedBy, includeReferences);
+        }
+
+        [McpServerTool, Description("List indexes with usage statistics")]
+        public static async Task<string> GetIndexInformationAsync(
+            [Description("Table name to filter indexes (optional)")] string? tableName = null,
+            [Description("Schema name (default: 'dbo')")] string? schemaName = "dbo",
+            [Description("Include usage statistics (default: true)")] bool includeStatistics = true)
+        {
+            return await SchemaAnalysis.GetIndexInformation(tableName, schemaName, includeStatistics);
+        }
+
+        // ==================== Performance Analysis Operations ====================
+
+        [McpServerTool, Description("Get SQL Server's missing index suggestions")]
+        public static async Task<string> GetMissingIndexesAsync(
+            [Description("Table name to filter suggestions (optional)")] string? tableName = null,
+            [Description("Minimum impact score threshold (default: 10.0)")] decimal minImpact = 10.0m,
+            [Description("Maximum number of suggestions to return (default: 20)")] int topN = 20)
+        {
+            return await PerformanceAnalysis.GetMissingIndexes(tableName, minImpact, topN);
+        }
+
+        [McpServerTool, Description("Retrieve execution plan without executing query")]
+        public static async Task<string> GetQueryExecutionPlanAsync(
+            [Description("SQL query to analyze (required)")] string query,
+            [Description("Plan type: 'ESTIMATED' or 'SHOWPLAN_XML' (default: 'ESTIMATED')")] string planType = "ESTIMATED",
+            [Description("Include performance analysis (default: true)")] bool includeAnalysis = true)
+        {
+            return await PerformanceAnalysis.GetQueryExecutionPlan(query, planType, includeAnalysis);
+        }
+
+        [McpServerTool, Description("Analyze index fragmentation levels")]
+        public static async Task<string> GetIndexFragmentationAsync(
+            [Description("Table name to filter (optional)")] string? tableName = null,
+            [Description("Schema name (default: 'dbo')")] string? schemaName = "dbo",
+            [Description("Minimum fragmentation percentage (default: 10.0)")] decimal minFragmentation = 10.0m,
+            [Description("Include online rebuild eligibility (default: true)")] bool includeOnlineStatus = true)
+        {
+            return await PerformanceAnalysis.GetIndexFragmentation(tableName, schemaName, minFragmentation, includeOnlineStatus);
+        }
+
+        // ==================== Data Discovery Operations ====================
+
+        [McpServerTool, Description("Search for data across tables with pattern matching")]
+        public static async Task<string> SearchTableDataAsync(
+            [Description("Search pattern (supports LIKE wildcards)")] string searchPattern,
+            [Description("Table name to search (optional)")] string? tableName = null,
+            [Description("Schema name (default: 'dbo')")] string? schemaName = "dbo",
+            [Description("Specific column names to search (optional, comma-separated)")] string? columnNames = null,
+            [Description("Maximum rows to return per table (default: 10)")] int maxRows = 10,
+            [Description("Maximum tables to search (default: 10)")] int maxTables = 10)
+        {
+            return await DataDiscovery.SearchTableData(searchPattern, tableName, schemaName, columnNames, maxRows, maxTables);
+        }
+
+        [McpServerTool, Description("Get column statistics and data distribution")]
+        public static async Task<string> GetColumnStatisticsAsync(
+            [Description("Table name (required)")] string tableName,
+            [Description("Schema name (default: 'dbo')")] string? schemaName = "dbo",
+            [Description("Column name (optional - if not provided, returns all columns)")] string? columnName = null,
+            [Description("Include histogram data (default: false)")] bool includeHistogram = false,
+            [Description("Sample size for statistics (default: 10000)")] int sampleSize = 10000)
+        {
+            return await DataDiscovery.GetColumnStatistics(tableName, schemaName, columnName, includeHistogram, sampleSize);
+        }
+
+        [McpServerTool, Description("Find tables containing specific column names")]
+        public static async Task<string> FindTablesWithColumnAsync(
+            [Description("Column name to search for (supports wildcards)")] string columnName,
+            [Description("Schema name filter (optional)")] string? schemaName = null,
+            [Description("Exact column name match (default: false)")] bool exactMatch = false,
+            [Description("Include system tables (default: false)")] bool includeSystemTables = false,
+            [Description("Include row count for each table (default: true)")] bool includeRowCount = true,
+            [Description("Maximum number of results (default: 100)")] int maxResults = 100)
+        {
+            return await DataDiscovery.FindTablesWithColumn(columnName, schemaName, exactMatch, includeSystemTables, includeRowCount, maxResults);
+        }
+
+        // ==================== Code Generation Operations ====================
+
+        [McpServerTool, Description("Generate C# model class code based on table schema for .NET applications")]
+        public static async Task<string> GenerateModelClassAsync(
+            [Description("Table name (required)")] string tableName,
+            [Description("Schema name (default: 'dbo')")] string? schemaName = "dbo",
+            [Description("Custom class name (optional - defaults to table name)")] string? className = null,
+            [Description("Namespace for C# (default: 'GeneratedModels')")] string @namespace = "GeneratedModels",
+            [Description("Include DataAnnotations validation attributes (default: true)")] bool includeValidation = true,
+            [Description("Include Table/Column attributes and XML documentation (default: true)")] bool includeAnnotations = true)
+        {
+            return await CodeGeneration.GenerateModelClass(tableName, schemaName, className, @namespace, includeValidation, includeAnnotations);
+        }
     }
 }
